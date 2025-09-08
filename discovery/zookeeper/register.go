@@ -15,7 +15,6 @@
 package zookeeper
 
 import (
-	"context"
 	"time"
 
 	"github.com/go-zookeeper/zk"
@@ -44,7 +43,7 @@ func (s *ZkClient) CreateTempNode(rpcRegisterName, addr string) (node string, er
 	return node, nil
 }
 
-func (s *ZkClient) Register(ctx context.Context, rpcRegisterName, host string, port int, opts ...grpc.DialOption) error {
+func (s *ZkClient) Register(rpcRegisterName, host string, port int, opts ...grpc.DialOption) error {
 	if err := s.ensureName(rpcRegisterName); err != nil {
 		return err
 	}
@@ -76,7 +75,7 @@ func (s *ZkClient) UnRegister() error {
 	s.rpcRegisterName = ""
 	s.rpcRegisterAddr = ""
 	s.isRegistered = false
-	s.localConns = make(map[string][]grpc.ClientConnInterface)
+	s.localConns = make(map[string][]*grpc.ClientConn)
 	s.resolvers = make(map[string]*Resolver)
 	return nil
 }

@@ -63,25 +63,8 @@ func (e *codeError) Wrap() error {
 	return stack.New(e, stackSkip)
 }
 
-func (e *codeError) clone() *codeError {
-	return &codeError{
-		code:   e.code,
-		msg:    e.msg,
-		detail: e.detail,
-	}
-}
-
 func (e *codeError) WrapMsg(msg string, kv ...any) error {
-	retErr := e.clone()
-	if msg != "" || len(kv) > 0 {
-		detail := toString(msg, kv)
-		if retErr.detail == "" {
-			retErr.detail = detail
-		} else {
-			retErr.detail += ", " + detail
-		}
-	}
-	return stack.New(retErr, stackSkip)
+	return WrapMsg(e, msg, kv...)
 }
 
 func (e *codeError) Is(err error) bool {
@@ -119,16 +102,12 @@ func (e *codeError) Error() string {
 func Unwrap(err error) error {
 	for err != nil {
 		unwrap, ok := err.(interface {
-			error
 			Unwrap() error
 		})
 		if !ok {
 			break
 		}
 		err = unwrap.Unwrap()
-		if err == nil {
-			return unwrap
-		}
 	}
 	return err
 }

@@ -30,7 +30,7 @@ func Check(ctx context.Context, ZkServers []string, scheme string, options ...Zk
 		zkRoot:     "/",
 		scheme:     scheme,
 		timeout:    timeout,
-		localConns: make(map[string][]grpc.ClientConnInterface),
+		localConns: make(map[string][]*grpc.ClientConn),
 		resolvers:  make(map[string]*Resolver),
 		lock:       &sync.Mutex{},
 		logger:     nilLog{},

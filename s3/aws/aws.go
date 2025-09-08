@@ -4,12 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-	"net/url"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
@@ -17,6 +11,11 @@ import (
 	aws3 "github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/openimsdk/tools/s3"
+	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -56,12 +55,12 @@ func (a *Aws) Engine() string {
 	return "aws"
 }
 
-func (a *Aws) PartLimit() (*s3.PartLimit, error) {
+func (a *Aws) PartLimit() *s3.PartLimit {
 	return &s3.PartLimit{
 		MinPartSize: minPartSize,
 		MaxPartSize: maxPartSize,
 		MaxNumSize:  maxNumSize,
-	}, nil
+	}
 }
 
 func (a *Aws) formatETag(etag string) string {
@@ -96,12 +95,12 @@ func (a *Aws) IsNotFound(err error) bool {
 	return respErr.Response.StatusCode == http.StatusNotFound
 }
 
-func (a *Aws) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
+func (a *Aws) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
 	res, err := a.presign.PresignPutObject(ctx, &aws3.PutObjectInput{Bucket: aws.String(a.bucket), Key: aws.String(name)}, aws3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(nil))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return &s3.PresignedPutResult{URL: res.URL}, nil
+	return res.URL, nil
 }
 
 func (a *Aws) DeleteObject(ctx context.Context, name string) error {
@@ -151,7 +150,7 @@ func (a *Aws) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, erro
 	return info, nil
 }
 
-func (a *Aws) InitiateMultipartUpload(ctx context.Context, name string, opt *s3.PutOption) (*s3.InitiateMultipartUploadResult, error) {
+func (a *Aws) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
 	res, err := a.client.CreateMultipartUpload(ctx, &aws3.CreateMultipartUploadInput{Bucket: aws.String(a.bucket), Key: aws.String(name)})
 	if err != nil {
 		return nil, err

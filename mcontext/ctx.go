@@ -54,33 +54,63 @@ func SetConnID(ctx context.Context, connID string) context.Context {
 }
 
 func GetOperationID(ctx context.Context) string {
-	s, _ := ctx.Value(constant.OperationID).(string)
-	return s
+	if ctx.Value(constant.OperationID) != nil {
+		s, ok := ctx.Value(constant.OperationID).(string)
+		if ok {
+			return s
+		}
+	}
+	return ""
 }
 
 func GetOpUserID(ctx context.Context) string {
-	s, _ := ctx.Value(constant.OpUserID).(string)
-	return s
+	if ctx.Value(constant.OpUserID) != "" {
+		s, ok := ctx.Value(constant.OpUserID).(string)
+		if ok {
+			return s
+		}
+	}
+	return ""
 }
 
 func GetConnID(ctx context.Context) string {
-	s, _ := ctx.Value(constant.ConnID).(string)
-	return s
+	if ctx.Value(constant.ConnID) != "" {
+		s, ok := ctx.Value(constant.ConnID).(string)
+		if ok {
+			return s
+		}
+	}
+	return ""
 }
 
 func GetTriggerID(ctx context.Context) string {
-	s, _ := ctx.Value(constant.TriggerID).(string)
-	return s
+	if ctx.Value(constant.TriggerID) != "" {
+		s, ok := ctx.Value(constant.TriggerID).(string)
+		if ok {
+			return s
+		}
+	}
+	return ""
 }
 
 func GetOpUserPlatform(ctx context.Context) string {
-	s, _ := ctx.Value(constant.OpUserPlatform).(string)
-	return s
+	if ctx.Value(constant.OpUserPlatform) != "" {
+		s, ok := ctx.Value(constant.OpUserPlatform).(string)
+		if ok {
+			return s
+		}
+	}
+	return ""
 }
 
 func GetRemoteAddr(ctx context.Context) string {
-	s, _ := ctx.Value(constant.RemoteAddr).(string)
-	return s
+	if ctx.Value(constant.RemoteAddr) != "" {
+		s, ok := ctx.Value(constant.RemoteAddr).(string)
+		if ok {
+			return s
+		}
+	}
+	return ""
 }
 
 func GetMustCtxInfo(ctx context.Context) (operationID, opUserID, platform, connID string, err error) {

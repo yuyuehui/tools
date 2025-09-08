@@ -137,26 +137,17 @@ type AccessURLOption struct {
 	Image       *Image `json:"image"`
 }
 
-type PutOption struct {
-	ContentType string `json:"contentType"`
-}
-
-type PresignedPutResult struct {
-	URL    string      `json:"url"`
-	Header http.Header `json:"header"`
-}
-
 type Interface interface {
 	Engine() string
-	PartLimit() (*PartLimit, error)
+	PartLimit() *PartLimit
 
-	InitiateMultipartUpload(ctx context.Context, name string, opt *PutOption) (*InitiateMultipartUploadResult, error)
+	InitiateMultipartUpload(ctx context.Context, name string) (*InitiateMultipartUploadResult, error)
 	CompleteMultipartUpload(ctx context.Context, uploadID string, name string, parts []Part) (*CompleteMultipartUploadResult, error)
 
 	PartSize(ctx context.Context, size int64) (int64, error)
 	AuthSign(ctx context.Context, uploadID string, name string, expire time.Duration, partNumbers []int) (*AuthSignResult, error)
 
-	PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *PutOption) (*PresignedPutResult, error)
+	PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error)
 
 	DeleteObject(ctx context.Context, name string) error
 

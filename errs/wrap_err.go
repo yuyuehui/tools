@@ -1,9 +1,6 @@
 package errs
 
-import (
-	"errors"
-	"fmt"
-)
+import "errors"
 
 type ErrWrapper interface {
 	Is(err error) bool
@@ -32,7 +29,7 @@ func (e *errorWrapper) Is(err error) bool {
 }
 
 func (e *errorWrapper) Error() string {
-	return fmt.Sprintf("%s %s", e.error, e.s)
+	return e.s
 }
 
 func (e *errorWrapper) Wrap() error {

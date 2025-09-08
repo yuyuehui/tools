@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/go-zookeeper/zk"
-	"github.com/openimsdk/tools/discovery"
 	"github.com/openimsdk/tools/errs"
 	"github.com/openimsdk/tools/log"
 	"google.golang.org/grpc"
@@ -55,7 +54,7 @@ type ZkClient struct {
 	options []grpc.DialOption
 
 	resolvers           map[string]*Resolver
-	localConns          map[string][]grpc.ClientConnInterface
+	localConns          map[string][]*grpc.ClientConn
 	cancel              context.CancelFunc
 	isStateDisconnected bool
 	balancerName        string
@@ -70,7 +69,7 @@ func NewZkClient(ZkServers []string, scheme string, options ...ZkOption) (*ZkCli
 		zkRoot:     "/",
 		scheme:     scheme,
 		timeout:    timeout,
-		localConns: make(map[string][]grpc.ClientConnInterface),
+		localConns: make(map[string][]*grpc.ClientConn),
 		resolvers:  make(map[string]*Resolver),
 		lock:       &sync.Mutex{},
 		logger:     nilLog{},
@@ -196,30 +195,6 @@ func (s *ZkClient) AddOption(opts ...grpc.DialOption) {
 	s.options = append(s.options, opts...)
 }
 
-func (s *ZkClient) GetClientLocalConns() map[string][]grpc.ClientConnInterface {
+func (s *ZkClient) GetClientLocalConns() map[string][]*grpc.ClientConn {
 	return s.localConns
-}
-
-func (s *ZkClient) SetKey(ctx context.Context, key string, data []byte) error {
-	return discovery.ErrNotSupported
-}
-
-func (s *ZkClient) SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error {
-	return discovery.ErrNotSupported
-}
-
-func (s *ZkClient) GetKey(ctx context.Context, key string) ([]byte, error) {
-	return nil, discovery.ErrNotSupported
-}
-
-func (s *ZkClient) GetKeyWithPrefix(ctx context.Context, key string) ([][]byte, error) {
-	return nil, discovery.ErrNotSupported
-}
-
-func (s *ZkClient) DelData(ctx context.Context, key string) error {
-	return discovery.ErrNotSupported
-}
-
-func (s *ZkClient) WatchKey(ctx context.Context, key string, fn discovery.WatchKeyHandler) error {
-	return discovery.ErrNotSupported
 }

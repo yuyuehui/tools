@@ -21,6 +21,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/qiniu/go-sdk/v7/storage"
 	"io"
 	"net/http"
 	"net/url"
@@ -29,7 +31,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
 	awss3config "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	awss3 "github.com/aws/aws-sdk-go-v2/service/s3"
@@ -104,15 +105,15 @@ func (k *Kodo) Engine() string {
 	return "kodo"
 }
 
-func (k *Kodo) PartLimit() (*s3.PartLimit, error) {
+func (k *Kodo) PartLimit() *s3.PartLimit {
 	return &s3.PartLimit{
 		MinPartSize: minPartSize,
 		MaxPartSize: maxPartSize,
 		MaxNumSize:  maxNumSize,
-	}, nil
+	}
 }
 
-func (k *Kodo) InitiateMultipartUpload(ctx context.Context, name string, opt *s3.PutOption) (*s3.InitiateMultipartUploadResult, error) {
+func (k *Kodo) InitiateMultipartUpload(ctx context.Context, name string) (*s3.InitiateMultipartUploadResult, error) {
 	result, err := k.Client.CreateMultipartUpload(ctx, &awss3.CreateMultipartUploadInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
@@ -193,15 +194,15 @@ func (k *Kodo) AuthSign(ctx context.Context, uploadID string, name string, expir
 
 }
 
-func (k *Kodo) PresignedPutObject(ctx context.Context, name string, expire time.Duration, opt *s3.PutOption) (*s3.PresignedPutResult, error) {
+func (k *Kodo) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
 	object, err := k.PresignClient.PresignPutObject(ctx, &awss3.PutObjectInput{
 		Bucket: aws.String(k.Region),
 		Key:    aws.String(name),
 	}, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(nil))
 	if err != nil {
-		return nil, err
+		return "", err
 	}
-	return &s3.PresignedPutResult{URL: object.URL}, nil
+	return object.URL, nil
 }
 
 func (k *Kodo) DeleteObject(ctx context.Context, name string) error {
@@ -295,64 +296,39 @@ func (k *Kodo) ListUploadedParts(ctx context.Context, uploadID string, name stri
 }
 
 func (k *Kodo) AccessURL(ctx context.Context, name string, expire time.Duration, opt *s3.AccessURLOption) (string, error) {
-	params := &awss3.GetObjectInput{
-		Bucket: aws.String(k.Region),
-		Key:    aws.String(name),
-	}
-	if opt != nil {
-		if opt.ContentType != "" {
-			params.ResponseContentType = aws.String(opt.ContentType)
+	if opt == nil || opt.Image == nil {
+		params := &awss3.GetObjectInput{
+			Bucket: aws.String(k.Region),
+			Key:    aws.String(name),
 		}
-		if opt.Filename != "" {
-			params.ResponseContentDisposition = aws.String(`attachment; filename*=UTF-8''` + url.PathEscape(opt.Filename))
+		res, err := k.PresignClient.PresignGetObject(ctx, params, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(opt))
+		if err != nil {
+			return "", err
 		}
+		return res.URL, nil
 	}
-	res, err := k.PresignClient.PresignGetObject(ctx, params, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(opt))
-	if err != nil {
-		return "", err
-	}
-	return res.URL, nil
-	//if opt == nil || opt.Image == nil {
-	//	params := &awss3.GetObjectInput{
-	//		Bucket: aws.String(k.Region),
-	//		Key:    aws.String(name),
-	//	}
-	//	if opt != nil {
-	//		if opt.ContentType != "" {
-	//			params.ResponseContentType = aws.String(opt.ContentType)
-	//		}
-	//		if opt.Filename != "" {
-	//			params.ResponseContentDisposition = aws.String(`attachment; filename*=UTF-8''` + url.PathEscape(opt.Filename))
-	//		}
-	//	}
-	//	res, err := k.PresignClient.PresignGetObject(ctx, params, awss3.WithPresignExpires(expire), withDisableHTTPPresignerHeaderV4(opt))
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//	return res.URL, nil
-	//}
 	//https://developer.qiniu.com/dora/8255/the-zoom
-	//process := ""
-	//if opt.Image.Width > 0 {
-	//	process += strconv.Itoa(opt.Image.Width) + "x"
-	//}
-	//if opt.Image.Height > 0 {
-	//	if opt.Image.Width > 0 {
-	//		process += strconv.Itoa(opt.Image.Height)
-	//	} else {
-	//		process += "x" + strconv.Itoa(opt.Image.Height)
-	//	}
-	//}
-	//imageMogr := "imageMogr2/thumbnail/" + process
-	////expire
-	//deadline := time.Now().Add(expire).Unix()
-	//domain := k.BucketURL
-	//query := make(url.Values)
-	//privateURL := storage.MakePrivateURLv2WithQuery(k.Auth, domain, name, query, deadline)
-	//if imageMogr != "" {
-	//	privateURL += "&" + imageMogr
-	//}
-	//return privateURL, nil
+	process := ""
+	if opt.Image.Width > 0 {
+		process += strconv.Itoa(opt.Image.Width) + "x"
+	}
+	if opt.Image.Height > 0 {
+		if opt.Image.Width > 0 {
+			process += strconv.Itoa(opt.Image.Height)
+		} else {
+			process += "x" + strconv.Itoa(opt.Image.Height)
+		}
+	}
+	imageMogr := "imageMogr2/thumbnail/" + process
+	//expire
+	deadline := time.Now().Add(expire).Unix()
+	domain := k.BucketURL
+	query := make(url.Values)
+	privateURL := storage.MakePrivateURLv2WithQuery(k.Auth, domain, name, query, deadline)
+	if imageMogr != "" {
+		privateURL += "&" + imageMogr
+	}
+	return privateURL, nil
 }
 
 func (k *Kodo) SetObjectContentType(ctx context.Context, name string, contentType string) error {

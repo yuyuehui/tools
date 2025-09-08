@@ -3,11 +3,10 @@ package log
 import (
 	"context"
 	"fmt"
+	"github.com/openimsdk/tools/errs"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/openimsdk/tools/errs"
 
 	rotatelogs "github.com/openimsdk/tools/log/file-rotatelogs"
 	"github.com/openimsdk/tools/utils/stringutil"
@@ -24,7 +23,6 @@ var (
 	AdaptiveErrorCodeLevel = map[int]int{
 		errs.ErrInternalServer.Code(): LevelError,
 	}
-	DisableAsync = false
 )
 
 type LogFormatter interface {
@@ -140,7 +138,7 @@ func ZError(ctx context.Context, msg string, err error, keysAndValues ...any) {
 }
 
 func ZPanic(ctx context.Context, msg string, err error, keysAndValues ...any) {
-	pkgLogger.Error(ctx, msg, err, keysAndValues...)
+	pkgLogger.Panic(ctx, msg, err, keysAndValues...)
 }
 
 func ZAdaptive(ctx context.Context, msg string, err error, keysAndValues ...any) {
@@ -174,13 +172,6 @@ func CInfo(ctx context.Context, msg string, keysAndValues ...any) {
 		return
 	}
 	osStdout.Info(ctx, msg, keysAndValues...)
-}
-
-func Flush() {
-	if pkgLogger == nil {
-		return
-	}
-	pkgLogger.Flush()
 }
 
 type ZapLogger struct {
@@ -288,13 +279,6 @@ func (l *ZapLogger) cores(isStdout bool, isJson bool, logLocation string, rotate
 	writer, err := l.getWriter(logLocation, rotateCount)
 	if err != nil {
 		return nil, err
-	}
-	if isStdout == false && DisableAsync == false {
-		writer = &zapcore.BufferedWriteSyncer{
-			WS:            writer,
-			FlushInterval: time.Second * 2,
-			Size:          1024 * 512,
-		}
 	}
 	var cores []zapcore.Core
 	if logLocation != "" {
@@ -486,6 +470,7 @@ func (l *ZapLogger) kvAppend(ctx context.Context, keysAndValues []any) []any {
 	if l.isSimplify {
 		if len(keysAndValues)%2 == 0 {
 			for i := 1; i < len(keysAndValues); i += 2 {
+
 				if val, ok := keysAndValues[i].(LogFormatter); ok && val != nil {
 					keysAndValues[i] = val.Format()
 				}
@@ -532,12 +517,6 @@ func (l *ZapLogger) WithCallDepth(depth int) Logger {
 	dup := *l
 	dup.zap = l.zap.WithOptions(zap.AddCallerSkip(depth))
 	return &dup
-}
-
-func (l *ZapLogger) Flush() {
-	if err := l.zap.Sync(); err != nil {
-		_, _ = fmt.Fprintln(os.Stderr, "failed to flush zap logger", err)
-	}
 }
 
 func appendError(keysAndValues []any, err error) []any {

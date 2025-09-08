@@ -16,38 +16,45 @@ package discovery
 
 import (
 	"context"
-	"errors"
 
 	"google.golang.org/grpc"
 )
 
-var ErrNotSupported = errors.New("discovery data not supported")
+//
+//type Conn interface {
+//	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) //1
+//	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error)    //2
+//	GetSelfConnTarget() string                                                                             //3
+//	AddOption(opts ...grpc.DialOption)                                                                     //4
+//	CloseConn(conn *grpc.ClientConn)                                                                       //5
+//	// do not use this method for call rpc
+//
+//	GetClientLocalConns() map[string][]*grpc.ClientConn //del
+//
+//	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) //del
+//}
+//
+//type SvcDiscoveryRegistry interface {
+//	Conn
+//	Register(serviceName, host string, port int, opts ...grpc.DialOption) error //6
+//	UnRegister() error                                                          //7
+//	RegisterConf2Registry(key string, conf []byte) error                        //del
+//	GetConfFromRegistry(key string) ([]byte, error)                             //del
+//	Close()                                                                     //
+//}
 
 type Conn interface {
-	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (grpc.ClientConnInterface, error)
-	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]grpc.ClientConnInterface, error)
-	IsSelfNode(cc grpc.ClientConnInterface) bool
+	GetConns(ctx context.Context, serviceName string, opts ...grpc.DialOption) ([]*grpc.ClientConn, error) //1
+	GetConn(ctx context.Context, serviceName string, opts ...grpc.DialOption) (*grpc.ClientConn, error)    //2
+	GetSelfConnTarget() string                                                                             //3
+	AddOption(opts ...grpc.DialOption)                                                                     //4
+	CloseConn(conn *grpc.ClientConn)                                                                       //5
+	// do not use this method for call rpc
 }
-
-type WatchKey struct {
-	Value []byte
-}
-
-type WatchKeyHandler func(data *WatchKey) error
-
-type KeyValue interface {
-	SetKey(ctx context.Context, key string, value []byte) error
-	SetWithLease(ctx context.Context, key string, val []byte, ttl int64) error
-	GetKey(ctx context.Context, key string) ([]byte, error)
-	GetKeyWithPrefix(ctx context.Context, key string) ([][]byte, error)
-	WatchKey(ctx context.Context, key string, fn WatchKeyHandler) error
-}
-
 type SvcDiscoveryRegistry interface {
 	Conn
-	KeyValue
-	AddOption(opts ...grpc.DialOption)
-	Register(ctx context.Context, serviceName, host string, port int, opts ...grpc.DialOption) error
+	Register(serviceName, host string, port int, opts ...grpc.DialOption) error //6
+	UnRegister() error                                                          //7
 	Close()
-	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error)
+	GetUserIdHashGatewayHost(ctx context.Context, userId string) (string, error) //
 }

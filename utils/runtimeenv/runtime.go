@@ -5,14 +5,6 @@ import (
 	"strings"
 )
 
-const (
-	Kubernetes = "kubernetes"
-	Docker     = "docker"
-	Source     = "source"
-)
-
-var runtimeEnv = runtimeEnvironment()
-
 func isDocker() bool {
 	data, err := os.ReadFile("/proc/1/cgroup")
 	if err != nil {
@@ -26,16 +18,18 @@ func isKubernetes() bool {
 	return err == nil
 }
 
-func runtimeEnvironment() string {
+func PrintRuntimeEnvironment() string {
+	var runtimeEnv string
 	if isKubernetes() {
-		return Kubernetes
+		// fmt.Println("Running inside Kubernetes")
+		runtimeEnv = "kubernetes"
 	} else if isDocker() {
-		return Docker
+		// fmt.Println("Running inside Docker")
+		runtimeEnv = "docker"
 	} else {
-		return Source
+		// fmt.Println("Running in a local or non-Docker environment")
+		runtimeEnv = "source"
 	}
-}
 
-func RuntimeEnvironment() string {
 	return runtimeEnv
 }

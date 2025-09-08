@@ -16,7 +16,6 @@ package mw
 
 import (
 	"context"
-	"errors"
 	"strings"
 
 	"github.com/openimsdk/protocol/constant"
@@ -52,10 +51,7 @@ func RpcClientInterceptor(ctx context.Context, method string, req, resp any, cc 
 		log.ZInfo(ctx, "rpc client response success", "method", method, "resp", resp)
 		return nil
 	}
-	if errors.As(err, new(errs.CodeError)) {
-		return err
-	}
-	rpcErr, ok := errs.Unwrap(err).(interface{ GRPCStatus() *status.Status })
+	rpcErr, ok := err.(interface{ GRPCStatus() *status.Status })
 	if !ok {
 		log.ZError(ctx, "rpc client response failed not GRPCStatus", err, "method", method, "req", req)
 		return errs.ErrInternalServer.WrapMsg(err.Error())
