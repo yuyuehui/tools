@@ -19,7 +19,9 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/md5"
+	"crypto/sha256"
 	"encoding/hex"
+
 	"github.com/openimsdk/tools/errs"
 )
 
@@ -33,6 +35,16 @@ func Md5(s string, salt ...string) string {
 
 	cipher := h.Sum(nil)
 	return hex.EncodeToString(cipher)
+}
+
+// SHA256 returns the SHA256 hash of the input string.
+// If the input string is empty, returns an empty string.
+func SHA256(s string) string {
+	if s == "" {
+		return ""
+	}
+	hash := sha256.Sum256([]byte(s))
+	return hex.EncodeToString(hash[:])
 }
 
 // AesEncrypt encrypts the data with the key using AES encryption.
