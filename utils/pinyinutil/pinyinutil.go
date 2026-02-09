@@ -132,6 +132,52 @@ func ExtractInitialsFromNickname(nickname string) string {
 	return strings.Join(initials, "")
 }
 
+// GeneratePinyinAndInitials 从名称生成拼音和首字母（支持中文、英文、数字）
+// 参数:
+//   - name: 名称，可能包含中文、英文、数字等
+// 返回:
+//   - pinyin: 完整拼音字符串（小写，去除空格，如 "zhangsan" 或 "techteam"）
+//   - pinyinInitials: 首字母字符串（小写，如 "zs" 或 "tt"）
+// 注意:
+//   - 如果名称包含中文，会将中文转换为拼音并提取首字母
+//   - 如果名称只包含英文或数字，会保留英文拼音，提取首字母
+//   - 如果名称为空，返回空字符串
+func GeneratePinyinAndInitials(name string) (string, string) {
+	if name == "" {
+		return "", ""
+	}
+
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return "", ""
+	}
+
+	// 使用 go-pinyin 将中文转换为拼音（不带声调，用空格分隔）
+	args := pinyin.NewArgs()
+	args.Style = pinyin.Normal // 不带声调，如 "zhong guo ren"
+	pinyinParts := pinyin.LazyPinyin(name, args)
+
+	var pinyinStr string
+	var initials string
+
+	if len(pinyinParts) > 0 {
+		// 有中文，使用拼音
+		// 生成完整拼音：去除空格，连接所有拼音部分
+		pinyinStr = strings.ToLower(strings.Join(pinyinParts, ""))
+		// 提取首字母
+		initials = ExtractInitials(strings.Join(pinyinParts, " "))
+	} else {
+		// 没有中文，可能是纯英文或数字
+		// 转换为小写，去除空格和特殊字符，只保留字母和数字
+		lowerName := strings.ToLower(name)
+		pinyinStr = regexp.MustCompile(`[^a-z0-9]`).ReplaceAllString(lowerName, "")
+		// 提取英文首字母
+		initials = extractEnglishInitials(name)
+	}
+
+	return pinyinStr, initials
+}
+
 // extractEnglishInitials 从英文或混合字符串中提取首字母
 // 例如："John Doe" -> "jd", "ABC123" -> "a", "test" -> "t"
 func extractEnglishInitials(s string) string {
