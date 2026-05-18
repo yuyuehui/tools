@@ -365,7 +365,8 @@ func (o *OSS) AccessURL(ctx context.Context, name string, expire time.Duration, 
 		return "", errs.WrapMsg(err, "AccessURL error")
 	}
 	params := getURLParams(*o.bucket.Client.Conn, rawParams)
-	return getURL(o.um, o.bucket.BucketName, name, params).String(), nil
+	rawURL := getURL(o.um, o.bucket.BucketName, name, params).String()
+	return o.replaceWithBucketURL(rawURL), nil
 }
 
 func (o *OSS) FormData(ctx context.Context, name string, size int64, contentType string, duration time.Duration) (*s3.FormData, error) {
