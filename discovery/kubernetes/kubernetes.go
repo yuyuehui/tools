@@ -276,9 +276,61 @@ func (k *KubernetesConnManager) handleEndpointChange(obj interface{}) {
 		return
 	}
 	serviceName := endpoint.Name
-	if err := k.initializeConns(serviceName); err != nil {
-		fmt.Printf("Error initializing connections for %s: %v\n", serviceName, err)
+
+	k.mu.RLock()
+	oldConns, exists := k.connMap[serviceName]
+	k.mu.RUnlock()
+	if !exists {
+		return
 	}
+
+	newAddrs := make(map[string]struct{})
+	for _, subset := range endpoint.Subsets {
+		for _, addr := range subset.Addresses {
+			newAddrs[addr.IP] = struct{}{}
+		}
+	}
+
+	oldAddrs := make(map[string]struct{}, len(oldConns))
+	for _, conn := range oldConns {
+		oldAddrs[conn.Target()] = struct{}{}
+	}
+
+	if len(newAddrs) == len(oldAddrs) {
+		changed := false
+		for addr := range newAddrs {
+			found := false
+			for target := range oldAddrs {
+				if target != "" && len(addr) > 0 && containsIP(target, addr) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				changed = true
+				break
+			}
+		}
+		if !changed {
+			return
+		}
+	}
+
+	log.Printf("Endpoints changed for %s, refreshing connections (old=%d, new=%d)\n",
+		serviceName, len(oldConns), len(newAddrs))
+
+	if err := k.initializeConns(serviceName); err != nil {
+		log.Printf("Error refreshing connections for %s: %v\n", serviceName, err)
+		return
+	}
+
+	for _, conn := range oldConns {
+		conn.Close()
+	}
+}
+
+func containsIP(target, ip string) bool {
+	return len(target) >= len(ip) && target[:len(ip)] == ip && (len(target) == len(ip) || target[len(ip)] == ':')
 }
 
 func (k *KubernetesConnManager) checkOpts(opts ...grpc.DialOption) error {
