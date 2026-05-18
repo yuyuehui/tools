@@ -194,7 +194,21 @@ func (o *OSS) AuthSign(ctx context.Context, uploadID string, name string, expire
 }
 
 func (o *OSS) PresignedPutObject(ctx context.Context, name string, expire time.Duration) (string, error) {
-	return o.bucket.SignURL(name, http.MethodPut, int64(expire/time.Second))
+	rawURL, err := o.bucket.SignURL(name, http.MethodPut, int64(expire/time.Second))
+	if err != nil {
+		return "", err
+	}
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return "", err
+	}
+	burl, err := url.Parse(o.bucketURL)
+	if err != nil {
+		return rawURL, nil
+	}
+	u.Scheme = burl.Scheme
+	u.Host = burl.Host
+	return u.String(), nil
 }
 
 func (o *OSS) StatObject(ctx context.Context, name string) (*s3.ObjectInfo, error) {
