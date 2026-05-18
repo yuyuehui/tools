@@ -249,12 +249,11 @@ func (k *KubernetesConnManager) getServicePort(serviceName string) (int32, error
 	return svcPort, nil
 }
 
-// watchEndpoints listens for changes in Pod resources.
+// watchEndpoints listens for changes in Endpoints resources.
 func (k *KubernetesConnManager) watchEndpoints() {
 	informerFactory := informers.NewSharedInformerFactory(k.clientset, time.Minute*10)
-	informer := informerFactory.Core().V1().Pods().Informer()
+	informer := informerFactory.Core().V1().Endpoints().Informer()
 
-	// Watch for Pod changes (add, update, delete)
 	informer.AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			k.handleEndpointChange(obj)
