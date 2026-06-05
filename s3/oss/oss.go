@@ -313,6 +313,9 @@ func (o *OSS) AccessURL(ctx context.Context, name string, expire time.Duration, 
 		opt.ContentType = ""
 	}
 	var opts []oss.Option
+	// overrideHeader 标记是否需要覆盖响应头（response-content-*）。
+	// OSS 不允许匿名请求覆盖响应头，必须改用签名 URL（见下方分支）。
+	overrideHeader := false
 	if opt != nil {
 		if opt.Image != nil {
 			// Docs Address: https://help.aliyun.com/zh/oss/user-guide/resize-images-4?spm=a2c4g.11186623.0.0.4b3b1e4fWW6yji
@@ -339,14 +342,16 @@ func (o *OSS) AccessURL(ctx context.Context, name string, expire time.Duration, 
 			process += ",format," + format
 			opts = append(opts, oss.Process(process))
 		}
-		// 即使 publicRead=true 也要带上 response-content-type / response-content-disposition。
-		// OSS 对 public 对象支持用 query 覆盖响应头（无需签名），否则浏览器会用对象 key
-		// （内容寻址 hash）作为下载文件名，导致下载下来是无后缀的 hash 文件。
+		// 即使 publicRead=true 也要带上 response-content-type / response-content-disposition，
+		// 否则浏览器会用对象 key（内容寻址 hash）作为下载文件名，导致下载下来是无后缀的
+		// hash 文件。但 OSS 不允许匿名请求覆盖响应头，所以带了这些参数时必须走签名 URL。
 		if opt.ContentType != "" {
 			opts = append(opts, oss.ResponseContentType(opt.ContentType))
+			overrideHeader = true
 		}
 		if opt.Filename != "" {
 			opts = append(opts, oss.ResponseContentDisposition(`attachment; filename*=UTF-8''`+url.PathEscape(opt.Filename)))
+			overrideHeader = true
 		}
 	}
 	if expire <= 0 {
@@ -354,7 +359,10 @@ func (o *OSS) AccessURL(ctx context.Context, name string, expire time.Duration, 
 	} else if expire < time.Second {
 		expire = time.Second
 	}
-	if !o.publicRead {
+	// 私有桶必须签名；公共读桶在需要覆盖响应头（response-content-*）时也必须签名，
+	// 因为 OSS 会拒绝匿名请求覆盖响应头（InvalidRequest: Can not override response
+	// header for an anonymous user）。其余情况（如图片处理）走免签名的公网直链。
+	if !o.publicRead || overrideHeader {
 		rawURL, err := o.bucket.SignURL(name, http.MethodGet, int64(expire/time.Second), opts...)
 		if err != nil {
 			return "", err
