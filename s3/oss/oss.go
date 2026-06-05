@@ -342,13 +342,11 @@ func (o *OSS) AccessURL(ctx context.Context, name string, expire time.Duration, 
 			process += ",format," + format
 			opts = append(opts, oss.Process(process))
 		}
-		// 即使 publicRead=true 也要带上 response-content-type / response-content-disposition，
-		// 否则浏览器会用对象 key（内容寻址 hash）作为下载文件名，导致下载下来是无后缀的
-		// hash 文件。但 OSS 不允许匿名请求覆盖响应头，所以带了这些参数时必须走签名 URL。
-		if opt.ContentType != "" {
-			opts = append(opts, oss.ResponseContentType(opt.ContentType))
-			overrideHeader = true
-		}
+		// 只覆盖 response-content-disposition 以保留原始下载文件名，否则浏览器会用对象 key
+		// （内容寻址 hash）作为文件名，下载下来是无后缀的 hash 文件。
+		// 不覆盖 content-type：部分 bucket 策略禁止覆盖（InvalidRequest: Can not override
+		// response header on content-type），且对象自身存储的 content-type 已足够。
+		// 覆盖响应头必须走签名 URL（OSS 拒绝匿名请求覆盖响应头）。
 		if opt.Filename != "" {
 			opts = append(opts, oss.ResponseContentDisposition(`attachment; filename*=UTF-8''`+url.PathEscape(opt.Filename)))
 			overrideHeader = true
