@@ -41,16 +41,16 @@ jobs:
         os: [ubuntu-latest]
     steps:
     - name: Setup
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       
     - name: Set up Go ${{ matrix.go_version }}
-      uses: actions/setup-go@v5
+      uses: actions/setup-go@v6
       with:
         go-version: ${{ matrix.go_version }}
       id: go
 
     - name: Install Task
-      uses: arduino/setup-task@v1
+      uses: arduino/setup-task@v2
       with:
         version: '3.x' # If available, use the latest major version that's compatible
         repo-token: ${{ secrets.GITHUB_TOKEN }}
